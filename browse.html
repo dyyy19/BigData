@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browse — NTU Archive</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f6f8;
+    color: #1a1a1a;
+  }
+  header {
+    background: #fff;
+    border-bottom: 1px solid #e5e5e5;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header h1 { font-size: 18px; }
+  header .user-info { font-size: 13px; color: #666; display: flex; align-items: center; gap: 12px; }
+  header button {
+    background: none;
+    border: 1px solid #ddd;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  header button:hover { background: #f5f5f5; }
+  .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+  .toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .toolbar select, .toolbar input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 13px;
+    background: #fff;
+  }
+  .toolbar a.upload-btn {
+    margin-left: auto;
+    background: #2563eb;
+    color: #fff;
+    padding: 9px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .toolbar a.upload-btn:hover { background: #1d4ed8; }
+  .resource-list { display: flex; flex-direction: column; gap: 10px; }
+  .resource-card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .resource-info h3 { font-size: 15px; margin-bottom: 4px; }
+  .resource-meta { font-size: 12px; color: #777; display: flex; gap: 8px; flex-wrap: wrap; }
+  .tag {
+    display: inline-block;
+    background: #eef2ff;
+    color: #4338ca;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .resource-card a.download-btn {
+    background: #f3f4f6;
+    color: #1a1a1a;
+    padding: 8px 14px;
+    border-radius: 7px;
+    text-decoration: none;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .resource-card a.download-btn:hover { background: #e5e7eb; }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #888;
+  }
+  .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+  .resource-card .actions { display: flex; gap: 8px; }
+  .resource-card a.preview-btn {
+    background: #2563eb;
+    color: #fff;
+  }
+  .resource-card a.preview-btn:hover { background: #1d4ed8; }
+  .resource-card button.delete-btn {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 7px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .resource-card button.delete-btn:hover { background: #fee2e2; }
+  .merit-badge {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .leaderboard-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+  }
+  .leaderboard-row .rank { font-weight: 600; color: #888; width: 28px; }
+  .leaderboard-row .name { flex: 1; }
+  .leaderboard-row .pts { font-weight: 600; color: #92400e; }
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: #fff;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 900px;
+    height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 12px 18px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-header h3 { font-size: 15px; }
+  .modal-header button {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #666;
+    line-height: 1;
+  }
+  .modal-box iframe {
+    flex: 1;
+    border: none;
+    width: 100%;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📚 NTU Archive</h1>
+  <div class="user-info">
+    <span id="userNickname" style="cursor:pointer;" title="Click to change nickname (one time only)">Loading...</span>
+    <span id="userMerits" class="merit-badge">— merits</span>
+    <a href="#" id="leaderboardLink" style="font-size:13px;color:#2563eb;text-decoration:none;">Leaderboard</a>
+    <button id="signOutBtn">Sign out</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="toolbar">
+    <select id="filterDept">
+      <option value="">All departments</option>
+      <option value="9010 - Electrical Engineering">9010 - Electrical Engineering</option>
+      <option value="9020 - Computer Science & Information Engineering">9020 - Computer Science & Information Engineering</option>
+      <option value="9210 - Graduate Institute of Electrical Engineering">9210 - Graduate Institute of Electrical Engineering</option>
+      <option value="0020 - Mathematics">0020 - Mathematics</option>
+      <option value="0030 - Physics">0030 - Physics</option>
+      <option value="0040 - Chemistry">0040 - Chemistry</option>
+      <option value="1010 - Civil Engineering">1010 - Civil Engineering</option>
+      <option value="1020 - Mechanical Engineering">1020 - Mechanical Engineering</option>
+      <option value="2010 - Business Administration">2010 - Business Administration</option>
+      <option value="2020 - Economics">2020 - Economics</option>
+      <option value="Other">Other</option>
+    </select>
+    <select id="filterType">
+      <option value="">All types</option>
+      <option value="exam">Exam</option>
+      <option value="hw">Homework</option>
+      <option value="project">Project</option>
+    </select>
+    <input type="text" id="searchInput" placeholder="Search course name or code...">
+    <a href="upload.html" class="upload-btn">+ Upload</a>
+  </div>
+
+  <div id="resourceList" class="resource-list">
+    <div class="loading">Loading resources...</div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="previewModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modalTitle">Preview</h3>
+      <button id="modalCloseBtn">✕</button>
+    </div>
+    <iframe id="modalFrame" src=""></iframe>
+  </div>
+</div>
+
+<div class="modal-overlay" id="nicknameModal">
+  <div class="modal-box" style="height:auto; max-width:380px;">
+    <div class="modal-header">
+      <h3>Change Nickname</h3>
+      <button id="nicknameCloseBtn">✕</button>
+    </div>
+    <div style="padding:20px;">
+      <p style="font-size:13px; color:#888; margin-bottom:12px;">You can only do this once. Choose carefully.</p>
+      <input type="text" id="newNicknameInput" placeholder="New nickname" maxlength="30"
+        style="width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:8px; font-size:14px; box-sizing:border-box;">
+      <p id="nicknameError" style="color:#b91c1c; font-size:12px; margin-top:8px; display:none;"></p>
+      <button id="saveNicknameBtn"
+        style="width:100%; margin-top:16px; padding:11px; background:#2563eb; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
+        Save (one-time only)
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="leaderboardModal">
+  <div class="modal-box" style="height:auto; max-height:80vh;">
+    <div class="modal-header">
+      <h3>🏆 Merit Leaderboard</h3>
+      <button id="leaderboardCloseBtn">✕</button>
+    </div>
+    <div id="leaderboardList" style="padding:18px; overflow-y:auto;">Loading...</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://cuvtymychiiwhchxgmnh.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_GK5vdltD9OWlwey_mtvtjg_zlfdOBy_";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let allResources = [];
+  let currentUserId = null;
+  let currentMerits = 0;
+  let currentPremium = false;
+  let nicknameChanged = false;
+
+  async function init() {
+    // Check login status
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      window.location.href = "index.html";
+      return;
+    }
+    currentUserId = session.user.id;
+
+    const { data: profile, error: profileError } = await sb
+      .from("profiles")
+      .select("nickname, merits, is_premium, nickname_changed")
+      .eq("id", currentUserId)
+      .single();
+
+    if (profile) {
+      document.getElementById("userNickname").textContent = profile.nickname;
+      currentMerits = profile.merits;
+      currentPremium = profile.is_premium;
+      nicknameChanged = profile.nickname_changed;
+      updateMeritDisplay();
+    } else {
+      document.getElementById("userNickname").textContent = session.user.email;
+    }
+
+    await loadResources();
+  }
+
+  function updateMeritDisplay() {
+    const badge = document.getElementById("userMerits");
+    badge.textContent = currentPremium ? "⭐ Premium" : `${currentMerits} merits`;
+  }
+
+  async function loadResources() {
+    const { data, error } = await sb
+      .from("resources")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      document.getElementById("resourceList").innerHTML =
+        `<div class="empty-state">Error loading resources: ${error.message}</div>`;
+      return;
+    }
+
+    allResources = data;
+    renderResources(allResources);
+  }
+
+  function renderResources(list) {
+    const container = document.getElementById("resourceList");
+
+    if (list.length === 0) {
+      container.innerHTML = `<div class="empty-state">No resources found yet. Be the first to upload!</div>`;
+      return;
+    }
+
+    container.innerHTML = list.map(r => `
+      <div class="resource-card">
+        <div class="resource-info">
+          <h3>${escapeHtml(r.title || "Untitled")}</h3>
+          <div class="resource-meta">
+            <span class="tag">${escapeHtml(r.type || "—")}</span>
+            <span>${escapeHtml(r.course_code || "")}</span>
+            <span>·</span>
+            <span>${escapeHtml(r.department || "")}</span>
+            <span>·</span>
+            <span>${escapeHtml(r.semester || "")}</span>
+          </div>
+        </div>
+        <div class="actions">
+          ${r.file_url ? `<a href="#" class="download-btn preview-btn" onclick="openPreview('${escapeHtml(r.file_url)}', '${escapeHtml(r.title || "Preview")}', '${r.uploaded_by}'); return false;">Preview</a>` : ""}
+          ${r.uploaded_by === currentUserId ? `<button class="delete-btn" onclick="deleteResource(${r.id}, '${escapeHtml(r.file_url || "")}')">Delete</button>` : ""}
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function applyFilters() {
+    const dept = document.getElementById("filterDept").value;
+    const type = document.getElementById("filterType").value;
+    const search = document.getElementById("searchInput").value.toLowerCase();
+
+    let filtered = allResources;
+
+    if (dept) filtered = filtered.filter(r => r.department === dept);
+    if (type) filtered = filtered.filter(r => r.type === type);
+    if (search) {
+      filtered = filtered.filter(r =>
+        (r.title || "").toLowerCase().includes(search) ||
+        (r.course_code || "").toLowerCase().includes(search)
+      );
+    }
+
+    renderResources(filtered);
+  }
+
+  document.getElementById("filterDept").addEventListener("change", applyFilters);
+  document.getElementById("filterType").addEventListener("change", applyFilters);
+  document.getElementById("searchInput").addEventListener("input", applyFilters);
+
+  async function deleteResource(id, fileUrl) {
+    if (!confirm("Delete this resource? This cannot be undone.")) return;
+
+    try {
+      // Extract storage path from public URL
+      // URL format: .../storage/v1/object/public/exam-files/<path>
+      const marker = "/exam-files/";
+      const idx = fileUrl.indexOf(marker);
+      if (idx !== -1) {
+        const filePath = fileUrl.substring(idx + marker.length);
+        await sb.storage.from("exam-files").remove([filePath]);
+      }
+
+      const { error } = await sb.from("resources").delete().eq("id", id);
+      if (error) throw error;
+
+      await loadResources();
+    } catch (err) {
+      alert("Failed to delete: " + err.message);
+    }
+  }
+
+  async function openPreview(url, title, ownerId) {
+    const { data: success, error } = await sb.rpc("spend_preview_merit", { resource_owner_id: ownerId });
+
+    if (error) {
+      alert("Error: " + error.message);
+      return;
+    }
+
+    if (!success) {
+      alert(`Not enough merits to preview this file. You need 10 merits (you have ${currentMerits}). Upload a resource to earn +10 merits, or upgrade to Premium for unlimited previews.`);
+      return;
+    }
+
+    // Refresh merit count after spending/receiving
+    if (ownerId !== currentUserId && !currentPremium) {
+      currentMerits -= 10;
+      updateMeritDisplay();
+    }
+
+    document.getElementById("modalTitle").textContent = title;
+    document.getElementById("modalFrame").src = url;
+    document.getElementById("previewModal").classList.add("open");
+  }
+
+  function closePreview() {
+    document.getElementById("previewModal").classList.remove("open");
+    document.getElementById("modalFrame").src = "";
+  }
+
+  document.getElementById("modalCloseBtn").addEventListener("click", closePreview);
+  document.getElementById("previewModal").addEventListener("click", (e) => {
+    if (e.target.id === "previewModal") closePreview();
+  });
+
+  document.getElementById("userNickname").addEventListener("click", () => {
+    if (nicknameChanged) {
+      alert("You've already used your one-time nickname change.");
+      return;
+    }
+    document.getElementById("newNicknameInput").value = "";
+    document.getElementById("nicknameError").style.display = "none";
+    document.getElementById("nicknameModal").classList.add("open");
+  });
+
+  document.getElementById("nicknameCloseBtn").addEventListener("click", () => {
+    document.getElementById("nicknameModal").classList.remove("open");
+  });
+  document.getElementById("nicknameModal").addEventListener("click", (e) => {
+    if (e.target.id === "nicknameModal") {
+      document.getElementById("nicknameModal").classList.remove("open");
+    }
+  });
+
+  document.getElementById("saveNicknameBtn").addEventListener("click", async () => {
+    const newNick = document.getElementById("newNicknameInput").value.trim();
+    const errorEl = document.getElementById("nicknameError");
+
+    if (!newNick) {
+      errorEl.textContent = "Nickname can't be empty.";
+      errorEl.style.display = "block";
+      return;
+    }
+
+    const { data: success, error } = await sb.rpc("change_nickname_once", { new_nickname: newNick });
+
+    if (error) {
+      errorEl.textContent = "Error: " + error.message;
+      errorEl.style.display = "block";
+      return;
+    }
+
+    if (!success) {
+      errorEl.textContent = "Could not change nickname — you may have already used your one-time change.";
+      errorEl.style.display = "block";
+      return;
+    }
+
+    nicknameChanged = true;
+    document.getElementById("userNickname").textContent = newNick;
+    document.getElementById("nicknameModal").classList.remove("open");
+  });
+
+  async function openLeaderboard() {
+    document.getElementById("leaderboardModal").classList.add("open");
+    const listEl = document.getElementById("leaderboardList");
+    listEl.innerHTML = "Loading...";
+
+    const { data, error } = await sb
+      .from("profiles")
+      .select("nickname, merits")
+      .order("merits", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      listEl.innerHTML = `<p style="color:#b91c1c;">Error: ${error.message}</p>`;
+      return;
+    }
+
+    listEl.innerHTML = data.map((p, i) => `
+      <div class="leaderboard-row">
+        <span class="rank">#${i + 1}</span>
+        <span class="name">${escapeHtml(p.nickname)}</span>
+        <span class="pts">${p.merits} pts</span>
+      </div>
+    `).join("");
+  }
+
+  document.getElementById("leaderboardLink").addEventListener("click", (e) => {
+    e.preventDefault();
+    openLeaderboard();
+  });
+  document.getElementById("leaderboardCloseBtn").addEventListener("click", () => {
+    document.getElementById("leaderboardModal").classList.remove("open");
+  });
+  document.getElementById("leaderboardModal").addEventListener("click", (e) => {
+    if (e.target.id === "leaderboardModal") {
+      document.getElementById("leaderboardModal").classList.remove("open");
+    }
+  });
+
+  document.getElementById("signOutBtn").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    window.location.href = "index.html";
+  });
+
+  init();
+</script>
+
+</body>
+</html>

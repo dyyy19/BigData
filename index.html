@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NTU Archive</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f6f8;
+    color: #1a1a1a;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+  }
+  h1 {
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 28px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    margin-top: 16px;
+  }
+  input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  input:focus {
+    outline: none;
+    border-color: #2563eb;
+  }
+  button {
+    width: 100%;
+    margin-top: 24px;
+    padding: 12px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: #1d4ed8; }
+  button:disabled { background: #93b4f0; cursor: not-allowed; }
+  .toggle {
+    text-align: center;
+    margin-top: 18px;
+    font-size: 13px;
+    color: #666;
+  }
+  .toggle a { color: #2563eb; cursor: pointer; text-decoration: none; }
+  .message {
+    margin-top: 16px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: none;
+  }
+  .message.error { background: #fef2f2; color: #b91c1c; display: block; }
+  .message.success { background: #f0fdf4; color: #15803d; display: block; }
+  .hint {
+    font-size: 12px;
+    color: #999;
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>NTU Archive</h1>
+  <p class="subtitle" id="formSubtitle">Sign in with your NTU student email</p>
+
+  <form id="authForm">
+    <label for="email">NTU Email</label>
+    <input type="email" id="email" placeholder="b12902000@ntu.edu.tw" required>
+    <p class="hint">Must end in @ntu.edu.tw</p>
+
+    <div id="nicknameField" style="display:none;">
+      <label for="nickname">Nickname</label>
+      <input type="text" id="nickname" placeholder="e.g. CalcWizard (optional)">
+      <p class="hint">Shown on the leaderboard. Leave blank for "Anonymous".</p>
+    </div>
+
+    <label for="password">Password</label>
+    <input type="password" id="password" placeholder="••••••••" required minlength="6">
+
+    <button type="submit" id="submitBtn">Sign In</button>
+  </form>
+
+  <div class="message" id="message"></div>
+
+  <p class="toggle">
+    <span id="toggleText">Don't have an account?</span>
+    <a id="toggleLink">Sign up</a>
+  </p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = "https://cuvtymychiiwhchxgmnh.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_GK5vdltD9OWlwey_mtvtjg_zlfdOBy_";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let mode = "signin"; // or "signup"
+
+  const form = document.getElementById("authForm");
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const submitBtn = document.getElementById("submitBtn");
+  const messageEl = document.getElementById("message");
+  const subtitle = document.getElementById("formSubtitle");
+  const toggleText = document.getElementById("toggleText");
+  const toggleLink = document.getElementById("toggleLink");
+
+  toggleLink.addEventListener("click", () => {
+    mode = mode === "signin" ? "signup" : "signin";
+    const nicknameField = document.getElementById("nicknameField");
+    if (mode === "signup") {
+      subtitle.textContent = "Create an account with your NTU email";
+      submitBtn.textContent = "Sign Up";
+      toggleText.textContent = "Already have an account?";
+      toggleLink.textContent = "Sign in";
+      nicknameField.style.display = "block";
+    } else {
+      subtitle.textContent = "Sign in with your NTU student email";
+      submitBtn.textContent = "Sign In";
+      toggleText.textContent = "Don't have an account?";
+      toggleLink.textContent = "Sign up";
+      nicknameField.style.display = "none";
+    }
+    hideMessage();
+  });
+
+  function showMessage(text, type) {
+    messageEl.textContent = text;
+    messageEl.className = "message " + type;
+  }
+
+  function hideMessage() {
+    messageEl.className = "message";
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    hideMessage();
+
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    // NTU email restriction
+    if (!email.endsWith("@ntu.edu.tw")) {
+      showMessage("Only @ntu.edu.tw email addresses are allowed.", "error");
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Please wait...";
+
+    if (mode === "signup") {
+      const nickname = document.getElementById("nickname").value.trim() || "Anonymous";
+      const { data, error } = await sb.auth.signUp({
+        email,
+        password,
+        options: { data: { nickname } }
+      });
+      if (error) {
+        showMessage(error.message, "error");
+      } else {
+        showMessage("Account created! Check your NTU email to confirm, then sign in.", "success");
+      }
+    } else {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) {
+        showMessage(error.message, "error");
+      } else {
+        showMessage("Signed in! Redirecting...", "success");
+        setTimeout(() => { window.location.href = "browse.html"; }, 800);
+      }
+    }
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = mode === "signup" ? "Sign Up" : "Sign In";
+  });
+</script>
+
+</body>
+</html>
