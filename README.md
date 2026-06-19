@@ -40,7 +40,8 @@ This stack was chosen specifically to avoid writing or maintaining any server co
 ├── data  
     ├── Data_GoogleForm.xlsx
     ├── Data_Internet.xlsx
-├── b13902092.pdf              # Full project report
+├── docs
+    ├── b13902092.pdf              # Full project report
 └── README.md
 ```
 
