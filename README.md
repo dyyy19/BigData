@@ -37,10 +37,10 @@ This stack was chosen specifically to avoid writing or maintaining any server co
 ├── index.html              # Sign up / sign in page
 ├── browse.html              # Browse, search, filter, preview, leaderboard
 ├── upload.html               # Upload form
-├── data  
+├── data/
     ├── Data_GoogleForm.xlsx
     ├── Data_Internet.xlsx
-├── docs
+├── docs/
     ├── b13902092.pdf              # Full project report
 └── README.md
 ```
