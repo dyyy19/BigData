@@ -34,13 +34,11 @@ This stack was chosen specifically to avoid writing or maintaining any server co
 
 ```
 .
-├── code
-    ├── index.html              # Sign up / sign in page
-    ├── browse.html              # Browse, search, filter, preview, leaderboard
-    ├── upload.html               # Upload form
-├── attachments
-    ├── Data_GoogleForm.xlsx
-    ├── Data_Internet.xlsx
+├── index.html              # Sign up / sign in page
+├── browse.html              # Browse, search, filter, preview, leaderboard
+├── upload.html               # Upload form
+├── Data_GoogleForm.xlsx
+├── Data_Internet.xlsx
 ├── b13902092.pdf              # Full project report
 └── README.md
 ```
